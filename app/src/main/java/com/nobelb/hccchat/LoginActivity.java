@@ -28,10 +28,16 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
 import android.content.Intent;
+
+import org.jivesoftware.smack.ConnectionConfiguration;
+import org.jivesoftware.smack.XMPPConnection;
+import org.jivesoftware.smack.XMPPException;
+
 import static android.Manifest.permission.READ_CONTACTS;
 
 /**
@@ -166,17 +172,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             cancel = true;
         }
 
-        // Check for a valid email address.
-        if (TextUtils.isEmpty(email)) {
-            mEmailView.setError(getString(R.string.error_field_required));
-            focusView = mEmailView;
-            cancel = true;
-        } else if (!isEmailValid(email)) {
-            mEmailView.setError(getString(R.string.error_invalid_email));
-            focusView = mEmailView;
-            cancel = true;
-        }
-
         if (cancel) {
             // There was an error; don't attempt login and focus the first
             // form field with an error.
@@ -186,16 +181,16 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             // perform the user login attempt.
             showProgress(true);
             mAuthTask = new UserLoginTask(email, password);
-            //mAuthTask.execute((Void) null);
+            mAuthTask.execute((Void) null);
         }
     }
 
     /*
-      * 通过这个方法跳转到SecondActivity界面
+      * 通过这个方法跳转到RegisterActivity界面
     */
-    public void gotoSecondActivity(View view) {
+    public void gotoRegisterActivity(View view) {
         Intent intent = new Intent();
-        intent.setClass(LoginActivity.this, ChatRoomActivity.class);
+        intent.setClass(LoginActivity.this, RegisterActivity.class);
         startActivity(intent);
     }
 
@@ -307,6 +302,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
         private final String mEmail;
         private final String mPassword;
+        private XMPPConnection connection;
 
         UserLoginTask(String email, String password) {
             mEmail = email;
@@ -316,7 +312,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         @Override
         protected Boolean doInBackground(Void... params) {
             // TODO: attempt authentication against a network service.
-
             try {
                 // Simulate network access.
                 Thread.sleep(2000);
@@ -324,16 +319,18 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                 return false;
             }
 
-            for (String credential : DUMMY_CREDENTIALS) {
-                String[] pieces = credential.split(":");
-                if (pieces[0].equals(mEmail)) {
-                    // Account exists, return true if the password matches.
-                    return pieces[1].equals(mPassword);
+            if(conServer()){
+                if(login(mEmail,mPassword)){
+                    return true;
+                }else{
+                    return false;
                 }
+            }else{
+                return false;
             }
 
             // TODO: register the new account here.
-            return true;
+//            return true;
         }
 
         @Override
@@ -354,6 +351,53 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             mAuthTask = null;
             showProgress(false);
         }
+
+        /**
+         * 连接服务器
+         *
+         * @return
+         */
+        public boolean conServer() {
+            ConnectionConfiguration config = new ConnectionConfiguration(
+                    "10.67.8.51", 5222);
+            /** 是否启用安全验证 */
+            config.setSASLAuthenticationEnabled(false);
+            /** 是否启用调试 */
+             config.setDebuggerEnabled(true);
+            /** 创建connection链接 */
+            try {
+                connection = new XMPPConnection(config);
+                /** 建立连接 */
+                connection.connect();
+                return true;
+            } catch (XMPPException e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+
+        /**
+         * 登录
+         *
+         * @param a 登录帐号
+         * @param p 登录密码
+         * @return
+         */
+        public boolean login(String a, String p) {
+            try {
+                if (connection == null)
+                    return false;
+                /** 登录 */
+                connection.login(a, p);
+                return true;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+
     }
+
+
 }
 
